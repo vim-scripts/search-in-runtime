@@ -3,12 +3,16 @@
 " 		<URL:http://hermitte.free.fr/vim/>
 " URL:http://hermitte.free.fr/vim/ressources/vimfiles/plugin/searchInRuntime.vim
 "
-" Last Update:  07th nov 2002
-" Version:	1.6b
+" Last Update:  29th mar 2003
+" Version:	1.6c
 "
 " Purpose:	Search a file in the runtime path, $PATH, or any other
 "               variable, and execute an Ex command on it.
 " History: {{{
+"	Version 1.6c:
+"	(*) Bug fixed with non win32 versions of Vim: no more
+"            %Undefined variable ss
+"            %Invalid expression ss
 "	Version 1.6b:
 "	(*) Minor changes in the comments
 "	Version 1.6:
@@ -162,7 +166,9 @@ function! s:SearchIn(do_all, cmd, rpath, ...) " {{{
     endwhile
     let firstTime = 0
   endwhile
-  let &shellslash=ss
+  if has('win32')
+    let &shellslash=ss
+  endif
   "
   " Execute the command on the matching files
   let foundOne = 0

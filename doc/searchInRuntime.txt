@@ -1,5 +1,5 @@
 *searchInRuntime.txt*	Plugin for searching within list of directories
-			For Vim version 6.0.	Last change: 12th nov 2002
+			For Vim version 6.0.	Last change: 29th mar 2003
 
 
 				By Luc Hermitte
@@ -14,6 +14,7 @@ Contents~
   |:SearchInPATH|	Command to search into $PATH
   |:SearchInRuntime|	Command to search into 'runtimepath'
 |SiR-examples|		Examples and tips
+|SiR-get|		Where to get this plugin
 |add-local-help|	Instructions on installing this file
 
 
@@ -27,9 +28,9 @@ The plugin *searchInRuntime.vim* defines three commands that:
    directories ({var}, $PATH or 'runtimepath').
 2- execute the Ex command {cmd} on the files found, if any.
 
-If you are a worshipper of: >
+If you are a worshiper of: >
     $> find {path} -name {pattern} -exec {command}
-then, you may be interrested by these three VIM commands:
+then, you may be interested by these three VIM commands:
     :SearchInVar[!] {var} {cmd} {file-patterns} .. [ "|[0]" {params} .. ]
     :SearchInPATH[!]      {cmd} {file-patterns} .. [ "|[0]" {params} .. ]
     :SearchInRuntime[!]   {cmd} {file-patterns} .. [ "|[0]" {params} .. ]
@@ -79,7 +80,7 @@ When "|0 {params} .." is passed to :SearchIn*, then for each {file} found,
 
 Important:~
 The variable {var} (containing the list of directories), that :SearchInVar is
-awaiting the name, must be visible outside the current scope.  ie.: the variable
+awaiting the name, must be visible outside the current scope. ie.: the variable
 must be a |global-variable|, a |buffer-variable|, a |window-variable|, an
 environment variable, or one of the vim |options| prepended by ampersand like
 "&runtimepath". 
@@ -120,14 +121,14 @@ And now are some of the different ways I use to use this plugin.
 >
     :SearchInRuntime sp plugin/searchInRuntime.vim 
 <	Will open in a splitted window the source of the file
-	searchInRuntime.vim. [the full path can be very long and not always the
-	same] 
+	searchInRuntime.vim. 
+	[the full path can be very long and not always the same] 
 >
     :SearchInVar $INCLUDE sp vector
 <	Will (if $INCLUDE is correctly set) open, in a |:split| window, the C++
 	header file vector.
 >
-    :SearchInVar $INCLUDE Echo *
+    :SearchInVar! $INCLUDE Echo *
 <	Will echo the name of all the files present in the directories specified
         in $INCLUDE.
 >
@@ -153,10 +154,11 @@ And now are some of the different ways I use to use this plugin.
 <	Will load the content of the file template/template.{filetype} that
 	should be somewhere in the 'runtimepath'. 
 >
-    :command! -nargs=+ MemorizeSiRFiles exe ':let s:SiR_files=s:SiR_files."\n<args>"'
+    :command! -nargs=+ MemorizeSiRFiles exe 
+	\ ':let s:SiR_files=s:SiR_files."\n<args>"'
     :SearchInRuntime! MemorizeSiRFiles 
-       	\ doc/searchInRuntime.txt
 	\ plugin/searchInRuntime.vim
+       	\ doc/searchInRuntime.txt
 <	Will build s:SiR_files with the exact paths of the two files
 	searchInRuntime.vim and searchInRuntime.txt.
 	Then, in tar-scripts.vim (on my web site), I use this variable to check
@@ -164,6 +166,15 @@ And now are some of the different ways I use to use this plugin.
 
 
 ------------------------------------------------------------------------------
- © Luc Hermitte, 2001-2002 <http://hermitte.free.fr/vim/general.php3>
- VIM: let g:VS_language = 'american' 
+						*SiR-get*
+Where to get this plugin~
+
+This plugin can be dowloaded:
+- on my web site: <http://hermitte.free.fr/vim/general.php3>
+- on sourceforge: <http://vim.sourceforge.net/scripts/script.php?script_id=229>
+
+
+------------------------------------------------------------------------------
+ © Luc Hermitte, 2001-2002 <http://hermitte.free.fr/vim/>
+ VIM: let b:VS_language = 'american' 
  vim:ts=8:sw=4:tw=80:fo=tcq2:isk=!-~,^*,^\|,^\":ft=help:
