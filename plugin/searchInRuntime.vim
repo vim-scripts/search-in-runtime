@@ -1,26 +1,31 @@
 " File:		searchInRuntime.vim 
-" Author:	Luc Hermitte <EMAIL:hermitte at free.fr>
-" 		<URL:http://hermitte.free.fr/vim>
+" Author:	Luc Hermitte <EMAIL:hermitte {at} free {dot} fr>
+" 		<URL:http://hermitte.free.fr/vim/>
+" URL:http://hermitte.free.fr/vim/ressources/vimfiles/plugin/searchInRuntime.vim
+"
 " Last Update:  07th nov 2002
-" Version:	1.6
+" Version:	1.6b
 "
 " Purpose:	Search a file in the runtime path, $PATH, or any other
-"               environment variable, and execute an Ex command on it.
+"               variable, and execute an Ex command on it.
 " History: {{{
+"	Version 1.6b:
+"	(*) Minor changes in the comments
 "	Version 1.6:
 "	(*) :SearchInENV has become :SearchInVar.
 "	Version 1.5:
 "	(*) The commands passed to the different :SearchIn* commands can
 "	    accept any number of arguments before the names of the files found.
-"	    To use them, add at the end of the :SearchIn* a pipe (' |0 ') and
-"	    then the list of the other parameters
+"	    To use them, add at the end of the :SearchIn* command: a pipe+0
+"	    (' |0 ') and then the list of the other parameters.
 "	Version 1.4:
 "	(*) Fix a minor problem under Windows when VIM is launched from the
 "	    explorer.
 "	Version 1.3:
 "	(*) The commands passed to the different :SearchIn* commands can
-"	    accept any number of arguments. To use them, add at the end of the
-"	    :SearchIn* a pipe (' | ') and then the list of the other parameters
+"	    accept any number of arguments after the names of the files found.
+"	    To use them, add at the end of the :SearchIn* command: a pipe 
+"	    (' | ') and then the list of the other parameters.
 "	Version 1.2b:
 "	(*) Address obfuscated for spammers
 "	Version 1.2:
@@ -71,6 +76,17 @@
 "	    For every file name plugin/*foo*.vim in the 'runtimepath', this
 "	    will execute:
 "		:grep text {path-to-the-file}
+"
+"	(*) :SearchInRuntime! source here/foo*.vim 
+"	    is equivalent to:
+"		:runtime! here/foo*.vim 
+"
+"	(*) :silent exe 'SearchInRuntime 0r there/that.'.&ft 
+"	    Will:
+"	    - search the 'runtimepath' list for the first file named
+"	    "that.{filetype}" present in the directory "there", 
+"	    - and insert it in the current buffer. 
+"	    If no file is found, nothing is done. 
 "
 " }}}
 "
