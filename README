@@ -1,0 +1,54 @@
+This is a mirror of http://www.vim.org/scripts/script.php?script_id=229
+
+This plugin extends the command 'runtime' (:h runtime) to execute any command (not only 'source') on files found in the '&runtimepath' option.
+
+It defines the command ":SearchInRuntime" which takes as a first parameter the command to execute and then the search patterns used to search files in the 'runtimepath' directories list.
+
+E.g. 1:
+     :SearchInRuntime! source here/foo*.vim 
+is equivalent to :
+     :runtime! here/foo*.vim
+
+E.g. 2:
+     :silent exe 'SearchInRuntime 0r there/that.'.&ft
+will search 'runtimepath' list for the first file named "that.<filetype>" present in the directory "there", and inserts it in the current buffer. If no file is found, nothing is done.
+
+N.B.: The [!] (bang) character can be used to apply the command to all found files. Otherwise, 'SearchInRuntime' stops after the first file.
+
+Since the version 1.1 : 
+(*) the 'verbose' option is supported :
+    >= 0 -> display when no file is found
+    >= 1 -> display the list of file found
+    >= 3 -> display the list of directories searched
+(*) ':SearchInPATH' : like ':SearchInRuntime', but with $PATH
+(*) ':SearchInVar' : works on any list of directories defined in a variable.
+(*) Contrary to ':runtime', the search can accept absolute paths, for instance :
+     :runtime! /usr/local/share/vim/*.vim                           is not valid while
+     :SearchInRuntime source /usr/local/share/vim/*.vim   is accepted.
+
+Since the version 1.5.:
+(*) The commands passed to the different :SearchIn* commands can accept any number of arguments before the names of the files found.To use them, add at the end of the :SearchIn* command: a pipe (' |0 ') and then the list of the other parameters. For instance:
+      :SearchInRuntime! grep plugin/*foo*.vim |0 text
+    For every file name plugin/*foo*.vim in the 'runtimepath', this will execute:
+      :grep text {path-to-the-file}
+
+(*) The commands passed to the different :SearchIn* commands can accept any number of arguments after the names of the files found. To use them, add at the end of the :SearchIn* command: a pipe (' | ') and then the list of the other parameters
+
+        :SearchInRuntime! Echo plugin/*foo*.vim | final arguments
+    For every file name plugin/*foo*.vim in the 'runtimepath', this will execute:
+        :Echo {path-to-the-file} final arguments
+
+Since Version 2.0.x:
+- Custom auto-completion added -- if vim supports it
+- New commands: :Split and :Vsplit to split open files found into &path
+
+Since Version 2.1.0:
+- new commands for vim7+ only: :GSplit and :GVSplit
+- overloaded mapping for vim7+ only: gf and CTRL-W_f
+- new mapping: glf that echoes the files in 'path' that match the pattern under the cursor
+
+GSplit, GVSplit, gf and CTRL-W_f permit to help the end-user to select a file among those matching a file-pattern (either given as parameter to the commands, or written under the cursor). If the selected file is already opened in a window, then that window is made the new active window -- this avoid to split-open the same file again and again.
+
+Full documentation available on:
+    http://hermitte.free.fr/vim/ressources/vimfiles/doc/searchInRuntime.html
+or within the tarball archive.
