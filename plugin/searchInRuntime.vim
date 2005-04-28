@@ -3,12 +3,26 @@
 " 		<URL:http://hermitte.free.fr/vim/>
 " URL:http://hermitte.free.fr/vim/ressources/vimfiles/plugin/searchInRuntime.vim
 "
-" Last Update:  29th mar 2003
-" Version:	1.6c
+" Last Update:  19th Apr 2005
+" Version:	2.0.3
 "
 " Purpose:	Search a file in the runtime path, $PATH, or any other
 "               variable, and execute an Ex command on it.
 " History: {{{
+"	Version 2.0.3
+"	(*) New command: :Runtime that wraps :runtime, but adds a support for
+"	    auto completion.
+"	Version 2.0.2
+"	(*) New commands: :Sp and :Vsp that (vertically) split open files from
+"	    the &path. auto completion supported.
+"	Version 2.0.1
+"	(*) Autocompletion for commands, paths and variables
+"	    (Many thanks to Bertram Scharpf and Hari Krishna Dara on Vim mailing
+"	    list for their valuable information)
+"
+"	Version 1.6d:
+"	(*) Bug fixed with non win32 versions of Vim: 
+"	    :SearchInPATH accepts ':' as a path separator in $PATH.
 "	Version 1.6c:
 "	(*) Bug fixed with non win32 versions of Vim: no more
 "            %Undefined variable ss
@@ -58,7 +72,6 @@
 " 	    variables ; e.g: SearchInRuntime Echo $VIM/*vimrc*
 " 	(*) Absolute paths should not shortcut the order of the file globing 
 " 	    patterns ; see: SearchInENV! $PATH Echo *.sh /usr/local/vim/*
-" 	(*) Write a little documentation
 " }}}
 "
 " Examples: {{{
@@ -95,31 +108,48 @@
 " }}}
 "
 " ========================================================================
-
-if exists("g:searchInRuntime_vim") | finish | endif
-let g:searchInRuntime_vim = 1
-"
-"" line continuation used here ??
+" Anti-reinclusion guards                                  {{{1
 let s:cpo_save = &cpo
 set cpo&vim
+if exists("g:loaded_searchInRuntime") 
+      \ && !exists('g:force_reload_searchInRuntime')  
+  let &cpo = s:cpo_save
+  finish 
+endif
+let g:loaded_searchInRuntime = 1
 
-
+" Anti-reinclusion guards                                  }}}1
 " ========================================================================
-" Commands {{{
-command! -nargs=+ -complete=file -bang
+" Commands                                                 {{{1
+command! -nargs=+ -complete=custom,SiRComplete -bang
       \       SearchInRuntime	call <SID>SearchInRuntime("<bang>",  <f-args>)
-command! -nargs=+ -complete=file -bang
+command! -nargs=+ -complete=custom,SiRComplete -bang
       \       SearchInVar	call <SID>SearchInVar("<bang>",  <f-args>)
-command! -nargs=+ -complete=file -bang
+command! -nargs=+ -complete=custom,SiRComplete -bang
       \       SearchInPATH	call <SID>SearchInPATH("<bang>",  <f-args>)
+
+command! -nargs=+ -complete=custom,SiRComplete -bang
+      \       Runtime		:runtime<bang> <args>
+command! -nargs=+ -complete=custom,SiRComplete -bang
+      \       Sp		:SearchInVar<bang> &path sp <args>
+command! -nargs=+ -complete=custom,SiRComplete -bang
+      \       Vsp		:SearchInVar<bang> &path vsp <args>
 
 if !exists('!Echo')
   command! -nargs=+ Echo echo "<args>"
 endif
 
-" }}}
+" }}}1
 " ========================================================================
-" Functions {{{
+" Functions                                                {{{1
+
+function! s:ToCommaSeparatedPath(path)
+  let path = substitute(a:path, ';', ',', 'g')
+  if !has('windows')
+    let path = substitute(a:path, ':', ',', 'g')
+  endif
+  return path
+endfunction
 
 function! s:SearchIn(do_all, cmd, rpath, ...) " {{{
   " Loop on runtimepath : build the list of files
@@ -221,6 +251,9 @@ function! s:SearchInPATH(bang, cmd, ...) "{{{
     let i = i + 1
   endwhile
   let p = substitute($PATH, ';', ',', 'g')
+  if !has('windows')
+    let p = substitute($PATH, ':', ',', 'g')
+  endif
   exe "call <sid>SearchIn(do_all, a:cmd,'". p ."'".a.")"
 endfunction "}}}
 
@@ -238,7 +271,189 @@ function! s:SearchInVar(bang, env, cmd, ...) "{{{
   exe "call <sid>SearchIn(do_all, a:cmd,'". p ."'".a.")"
 endfunction "}}}
 
-" }}}
+" Auto-completion                                {{{2
+" SiRComplete(ArgLead,CmdLine,CursorPos)                   {{{3
+function! SiRComplete(ArgLead, CmdLine, CursorPos)
+  let cmd = matchstr(a:CmdLine, '^SearchIn\S\+\|^Sp\|^Vsp\|^Ru\%[ntime]')
+  let cmdpat = '^'.cmd
+
+  let tmp = substitute(a:CmdLine, '\s*\S\+', 'Z', 'g')
+  let pos = strlen(tmp)
+  let lCmdLine = strlen(a:CmdLine)
+  let fromLast = strlen(a:ArgLead) + a:CursorPos - lCmdLine 
+  " The argument to expand, but cut where the cursor is
+  let ArgLead = strpart(a:ArgLead, 0, fromLast )
+  if 0
+    call confirm( "a:AL = ". a:ArgLead."\nAl  = ".ArgLead
+	  \ . "\nx=" . fromLast
+	  \ . "\ncut = ".strpart(a:CmdLine, a:CursorPos)
+	  \ . "\nCL = ". a:CmdLine."\nCP = ".a:CursorPos
+	  \ . "\ntmp = ".tmp."\npos = ".pos
+	  \, '&Ok', 1)
+  endif
+  
+  " let delta = ('SearchInVar'==cmd) ? 1 : 0
+  if     'SearchInVar' == cmd
+    let delta = 1
+  elseif cmd =~ '^\(Sp\|Vsp\)$'
+    return s:FindMatchingFiles(&path, ArgLead)
+  elseif cmd =~ '^Ru\%[ntime]$'
+    return s:FindMatchingFiles(&runtimepath, ArgLead)
+  else 
+    let delta = 0
+  endif
+
+  if     1+delta == pos
+    " First argument for :SearchInVar -> variable
+    return s:FindMatchingVariable(ArgLead)
+  elseif 2+delta == pos
+    " First argument: a command
+    return s:MatchingCommands(ArgLead)
+  elseif 3+delta <= pos
+    if     cmd =~ 'SearchInPATH!\='
+      let path = $PATH
+    elseif cmd =~ 'SearchInRuntime!\='
+      let path = &rtp
+    elseif cmd =~ 'SearchInVar!\='
+      let path = matchstr(a:CmdLine, '\S\+\s\+\zs\S\+\ze.*')
+      exe "let path = ".path
+    endif
+    return s:FindMatchingFiles(path, ArgLead)
+  endif
+  " finally: unknown
+  echoerr cmd.': unespected parameter ``'. a:ArgLead ."''"
+  return ''
+
+endfunction
+
+" s:MatchingCommands(ArgLead)                              {{{3
+" return the list of custom commands starting by {FirstLetters}
+"
+if v:version > 603 || v:version == 603 && has('patch011') 
+  " should be the required version
+  function! s:MatchingCommands(ArgLead)
+    silent! exe "norm! :".a:ArgLead."\<c-a>\"\<home>let\ cmds=\"\<cr>"
+    let cmds = substitute(cmds, '\s\+', '\n', 'g')
+    return cmds
+  endfunction
+
+else
+  " Thislimited version works with older version of vim, but only return custom
+  " commands
+  function! s:MatchingCommands(ArgLead)
+    let a_save=@a
+    silent! redir @a
+    silent! exe 'command '.a:ArgLead
+    redir END
+    let cmds = @a
+    let @a = a_save
+    let pat = '\%(^\|\n\)\s\+\(\S\+\).\{-}\ze\(\n\|$\)'
+    let cmds=substitute(cmds, pat, '\1\2', 'g')
+    return cmds
+  endfunction
+endif
+
+function! s:MatchingCommandsOld(ArgLead) " {{{4
+  "
+  " a- First approach
+  " let a_save=@a
+  " silent! redir @a
+  " silent! exe 'command '.a:ArgLead
+  " redir END
+  " let cmds = @a
+  " let @a = a_save
+  "
+  " b- second approach
+  " silent! exe "norm! :".a:ArgLead."\<c-a>\"\<home>let\ cmds=\"\<cr>"
+  "
+  " c- genutils' approach
+  command! -complete=command -nargs=* CMD :echo '<arg>'
+  " let a_save=@a
+  " silent! redir @a
+  " silent! exec "norm! :".a:ArgLead."\<c-A>\"\<Home>echo\ \"\<cr>"
+  " silent! exec "normal! :CMD ".a:ArgLead."\<c-A>\<cr>"
+  " redir END
+  " let cmds = @a
+  " let @a = a_save
+  let cmds = GetVimCmdOutput("normal! :CMD ".a:ArgLead."\<C-A>\<CR>")
+
+  let cmds = substitute(cmds, '\s\+', '\n', 'g')
+  
+  " let pat = '\%(^\|\n\)\s\+\(\S\+\).\{-}\ze\(\n\|$\)'
+  " let cmds=substitute(cmds, pat, '\1\2', 'g')
+
+  return cmds
+endfunction
+
+" s:FindMatchingFiles(path,ArgLead)                        {{{3
+function! s:FindMatchingFiles(pathsList, ArgLead)
+  " Convert the paths list to be compatible with globpath()
+  let pathsList = s:ToCommaSeparatedPath(a:pathsList)
+  let ArgLead = a:ArgLead
+  " If there is no '*' in the ArgLead, append it
+  if -1 == stridx(ArgLead, '*')
+    let ArgLead = ArgLead . '*'
+  endif
+  " Get the matching paths
+  let paths = globpath(pathsList, ArgLead)
+
+  " Build the result list of matching paths
+  let result = ''
+  while strlen(paths)
+    let p     = matchstr(paths, "[^\n]*")
+    let paths = matchstr(paths, "[^\n]*\n\\zs.*")
+    let sl = isdirectory(p) ? '/' : '' " use shellslash
+    let p     = fnamemodify(p, ':t') . sl
+    if strlen(p) && (!strlen(result) || (result !~ '.*'.p.'.*'))
+      " Append the matching path is not already in the result list
+      let result = result . (strlen(result) ? "\n" : '') . p
+    endif
+  endwhile
+
+  " Add the leading path as it has been stripped by fnamemodify
+  let lead = fnamemodify(ArgLead, ':h') . '/'
+  if strlen(lead) > 1
+    let result = substitute(result, '\(^\|\n\)', '\1'.lead, 'g')
+  endif
+
+  " Return the list of paths matching a:ArgLead
+  return result
+endfunction
+
+" s:FindMatchingVariable(ArgLead)                          {{{3
+
+if v:version > 603 || v:version == 603 && has('patch011') 
+  " should be the required version
+  function! s:FindMatchingVariable(ArgLead)
+    if     a:ArgLead[0] == '$'
+      command! -complete=environment -nargs=* FindVariable :echo '<arg>'
+      let ArgLead = strpart(a:ArgLead, 1)
+    elseif a:ArgLead[0] == '&'
+      command! -complete=option -nargs=* FindVariable :echo '<arg>'
+      let ArgLead = strpart(a:ArgLead, 1)
+    else
+      command! -complete=expression -nargs=* FindVariable :echo '<arg>'
+      let ArgLead = a:ArgLead
+    endif
+
+    silent! exe "norm! :FindVariable ".ArgLead."\<c-a>\"\<home>let\ cmds=\"\<cr>"
+    if a:ArgLead[0] =~ '[$&]'
+      let cmds = substitute(cmds, '\<\S', escape(a:ArgLead[0], '&').'&', 'g')
+    endif
+    let cmds = substitute(cmds, '\s\+', '\n', 'g')
+    let g:cmds = cmds
+    return cmds
+    " delc FindVariable
+  endfunction
+
+else
+  function! s:FindMatchingVariable(ArgLead)
+    return ''
+  endfunction
+endif
+
+
+" }}}1
 let &cpo = s:cpo_save
 " ========================================================================
 " vim60: set foldmethod=marker:

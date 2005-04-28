@@ -1,9 +1,9 @@
 *searchInRuntime.txt*	Plugin for searching within list of directories
-			For Vim version 6.0.	Last change: 29th mar 2003
+			For Vim version 6.0.	Last change: 28th Apr 2005
 
 
-				By Luc Hermitte
-				<hermitte {at} free {dot} fr>
+		     SearchInRuntime MANUAL     by Luc Hermitte
+		     Version 2.0.3
 
 
 ------------------------------------------------------------------------------
@@ -13,8 +13,11 @@ Contents~
   |:SearchInVar|	Command to search into a specified list of directories
   |:SearchInPATH|	Command to search into $PATH
   |:SearchInRuntime|	Command to search into 'runtimepath'
+  |:Sp| |:Vsp|		Command to split open a file found into 'path'
+  |:Runtime|		Wrapper for |:runtime| with auto-completion.
 |SiR-examples|		Examples and tips
 |SiR-get|		Where to get this plugin
+|SiR-completion|	A few words about automatic-completion
 |add-local-help|	Instructions on installing this file
 
 
@@ -23,7 +26,7 @@ Contents~
 						*search-in-directories-list* 
 Presentation~
 
-The plugin *searchInRuntime.vim* defines three commands that:
+The plugin *searchInRuntime.vim* defines commands that:
 1- search for files whose name match specified {file-patterns} within list of
    directories ({var}, $PATH or 'runtimepath').
 2- execute the Ex command {cmd} on the files found, if any.
@@ -35,12 +38,17 @@ then, you may be interested by these three VIM commands:
     :SearchInPATH[!]      {cmd} {file-patterns} .. [ "|[0]" {params} .. ]
     :SearchInRuntime[!]   {cmd} {file-patterns} .. [ "|[0]" {params} .. ]
 
+It also defines wrappers for |:sp| and |:vsp|: |:Sp| and |:Vsp| that split open
+a file searched into 'path', and a wrapper for |:runtime|: |:Runtime|.
+
+
+All these commands support automatic completion. |SiR-completion|.
 
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 						*SiR-parameters*
 Parameters~
 When [!] is included, all found files are passed to the Ex command {cmd}.
-When it is not included only the first found file is passed to {cmd}.
+When it is not included only the first file found is passed to {cmd}.
 
 
 When {file-patterns} contains wildcards, it is expanded to all matching files.
@@ -59,7 +67,7 @@ is accepted.
 
 
 When 'verbose' is one or higher, there is a message when no file could be found.
-When 'verbose' is two or higher, there is a message about each found file.
+When 'verbose' is two or higher, there is a message about each file found.
 When 'verbose' is three or higher, there is a message about each searched
 directory.
 
@@ -80,7 +88,7 @@ When "|0 {params} .." is passed to :SearchIn*, then for each {file} found,
 
 Important:~
 The variable {var} (containing the list of directories), that :SearchInVar is
-awaiting the name, must be visible outside the current scope. ie.: the variable
+expecting the name, must be visible outside the current scope. ie.: the variable
 must be a |global-variable|, a |buffer-variable|, a |window-variable|, an
 environment variable, or one of the vim |options| prepended by ampersand like
 "&runtimepath". 
@@ -109,6 +117,24 @@ is equivalent to:
     |:runtime|[!] {file-patterns} ..
 
 
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+						    *:Sp* *:Vsp*
+
+:Sp {file-patterns} ...~
+and
+:Vsp {file-patterns} ...~
+look for files into 'path' and split open them like |:sp| or |:vsp| do.
+
+They are somehow equivalent to: >
+    :SearchInVar &path :sp {file-patterns}
+
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+						    *:Runtime*
+:Runtime[!] {file-patterns}...~
+is just a wrapper for |:runtime| but with auto-completion. See |SiR-completion|.
+
+
 ------------------------------------------------------------------------------
 						*SiR-examples*
 Examples and tips~
@@ -120,8 +146,7 @@ Note: this plugin also defines the command: >
 And now are some of the different ways I use to use this plugin.
 >
     :SearchInRuntime sp plugin/searchInRuntime.vim 
-<	Will open in a splitted window the source of the file
-	searchInRuntime.vim. 
+<	Will open in a split window the source of the file searchInRuntime.vim. 
 	[the full path can be very long and not always the same] 
 >
     :SearchInVar $INCLUDE sp vector
@@ -170,11 +195,25 @@ And now are some of the different ways I use to use this plugin.
 Where to get this plugin~
 
 This plugin can be dowloaded:
-- on my web site: <http://hermitte.free.fr/vim/general.php3>
+- on my web site: <http://hermitte.free.fr/vim/general.php>
 - on sourceforge: <http://vim.sourceforge.net/scripts/script.php?script_id=229>
 
 
 ------------------------------------------------------------------------------
- © Luc Hermitte, 2001-2002 <http://hermitte.free.fr/vim/>
+						*SiR-completion*
+A few word about automatic completion~
+
+Since the version 2.0.1 of searchInRuntime, all these commands support
+|cmdline-completion|. This means we can hit |c_CTRL-D|, |c_<Tab>|, |C_CTRL-A|,
+|c_CTRL-L|, ..., to expand the pattern in front of the cursor according to the
+type of the parameters expected by the current command (see all three syntaxes).
+
+Note however this feature requires Vim 6.3 compiled with the |+cmdline_compl|
+feature not disabled. Some of the completions (completion of {cmd} and of
+{var} require the 11th patch of vim 6.3.
+
+
+------------------------------------------------------------------------------
+ © Luc Hermitte, 2001-2005 <http://hermitte.free.fr/vim/>
  VIM: let b:VS_language = 'american' 
  vim:ts=8:sw=4:tw=80:fo=tcq2:isk=!-~,^*,^\|,^\":ft=help:
