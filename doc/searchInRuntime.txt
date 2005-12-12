@@ -1,9 +1,9 @@
 *searchInRuntime.txt*	Plugin for searching within list of directories
-			For Vim version 6.0.	Last change: 28th Apr 2005
+			For Vim version 6.0.	Last change: 12th Dec 2005
 
 
 		     SearchInRuntime MANUAL     by Luc Hermitte
-		     Version 2.0.3
+		     Version 2.1.0
 
 
 ------------------------------------------------------------------------------
@@ -13,7 +13,11 @@ Contents~
   |:SearchInVar|	Command to search into a specified list of directories
   |:SearchInPATH|	Command to search into $PATH
   |:SearchInRuntime|	Command to search into 'runtimepath'
-  |:Sp| |:Vsp|		Command to split open a file found into 'path'
+  |:Sp| |:Vsp|		Commands to split open a file found into 'path'
+  |:GSp| |:GVSp|	Commands to goto file found into 'path', or split open
+			a new window
+  |glf| |SiR-gf|
+  |SiR-CTRL-W_f|	Overrides of |gf| and |CTRL-W_f|
   |:Runtime|		Wrapper for |:runtime| with auto-completion.
 |SiR-examples|		Examples and tips
 |SiR-get|		Where to get this plugin
@@ -118,16 +122,48 @@ is equivalent to:
 
 
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
-						    *:Sp* *:Vsp*
-
-:Sp {file-patterns} ...~
+						    *:Split* *:Vsplit*
+:Split[!] {file-patterns} ...~
 and
-:Vsp {file-patterns} ...~
+:Vsplit[!] {file-patterns} ...~
 look for files into 'path' and split open them like |:sp| or |:vsp| do.
 
 They are somehow equivalent to: >
     :SearchInVar &path :sp {file-patterns}
 
+NB:
+- File-completion is provided, unlike |:sp| and |:vsp|. |SiR-completion|
+
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+						    *:GSplit* *:GVSplit*
+:GSplit {file-patterns} ...~
+and
+:GVSplit {file-patterns} ...~
+look for files into 'path'.
+If several files match the {file-patterns}, the user will be asked to choose
+one file to open.
+If the selected file is already opened in a window, this window is made the
+active window. If not, a new window is split opened (them like |:sp| or |:vsp|
+do) with the selected file.
+
+NB:
+- These commands are related to |:Sp| and |:Vsp|.
+- "G" stands for "Goto-or-".
+- These commands require Vim 7+.
+- File-completion is provided. |SiR-completion|
+- {bang} is not supported like in |:Sp| or |:Vsp|.
+
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+						    *SiR-gf* *SiR-CTRL-W_f*
+Overrides of standard keybindings~
+|gf| and |CTRL-W-f| are overridden in order:
+- to ask the user which file must be opened if several files match, 
+- and to jump to an already opened window containing the selected file.
+
+*glf* displays the list of files, in 'path', that match the filename under the
+cursor.
 
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 						    *:Runtime*
@@ -188,6 +224,11 @@ And now are some of the different ways I use to use this plugin.
 	searchInRuntime.vim and searchInRuntime.txt.
 	Then, in tar-scripts.vim (on my web site), I use this variable to check
 	if any of the two files has been updated since last check up.
+>
+    :e /tmp/searchInRuntime-feedback.vim
+    :SearchInRuntime diffsplit plugin/searchInRuntime.vim
+<	Will compare a working copy of a file with the one in the
+	'runtimepath'.
 
 
 ------------------------------------------------------------------------------
@@ -215,5 +256,6 @@ feature not disabled. Some of the completions (completion of {cmd} and of
 
 ------------------------------------------------------------------------------
  © Luc Hermitte, 2001-2005 <http://hermitte.free.fr/vim/>
+ $Id: searchInRuntime.txt 1 2005-12-12 23:20:41Z Luc Hermitte $
  VIM: let b:VS_language = 'american' 
  vim:ts=8:sw=4:tw=80:fo=tcq2:isk=!-~,^*,^\|,^\":ft=help:
