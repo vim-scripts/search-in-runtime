@@ -1,16 +1,31 @@
 " ======================================================================
-" $Id: searchInRuntime.vim 1 2005-12-12 23:20:41Z Luc Hermitte $
+" $Id: searchInRuntime.vim 14 2006-01-13 00:17:10Z Luc Hermitte $
 " File:		searchInRuntime.vim 
 " Author:	Luc Hermitte <EMAIL:hermitte {at} free {dot} fr>
 " 		<URL:http://hermitte.free.fr/vim/>
 " Last Update:  $Date$
-" Version:	2.1.0
+" Version:	2.1.2
 "
 " Purpose:	Search a file in the runtime path, $PATH, or any other
 "               variable, and execute an Ex command on it.
 " URL:http://hermitte.free.fr/vim/ressources/vimfiles/plugin/searchInRuntime.vim
 " ======================================================================
 " History: {{{
+"	Version 2.1.2
+"	(*) New behavior for :GSplit and :GVSplit:
+"	    If a matching file is already opened in a window, jump to the
+"	    window, even if several files match the globing pattern. 
+"	(*) Bang for :GSplit and :GVSplit
+"	    -> ask which file to jump to even if one is already opened.
+"	Version 2.1.1
+"	(*) Completion rules fixed for :GSplit and :GVSplit
+"	(*) Bug fix: absolute paths (with :G*Split and CTRL-W_f) incorrectly
+"	    handled
+"	(*) Bug fix: paths with spaces (e.g. c:/Program files/...) were split
+"	(*) Bug fix: s:Simplify() did not stop at directories boundaries 
+"	(*) Options to choose the commands for :GSplit and :GVSplit
+"	    -> g:sir_goto_hsplit and g:sir_goto_vsplit.
+"	(*) gf and CTRL-W_f support UNC paths, URLs, ...
 "	Version 2.1.0
 "	(*) Select one file from a list of files matching
 "	    -> gf, <c-w>f
@@ -133,6 +148,8 @@ let g:loaded_searchInRuntime = 1
 " Anti-reinclusion guards                                  }}}1
 " ========================================================================
 " Commands                                                 {{{1
+
+" Generic commands {{{2
 command! -nargs=+ -complete=custom,SiRComplete -bang
       \       SearchInRuntime	call <SID>SearchInRuntime("<bang>",  <f-args>)
 command! -nargs=+ -complete=custom,SiRComplete -bang
@@ -140,6 +157,7 @@ command! -nargs=+ -complete=custom,SiRComplete -bang
 command! -nargs=+ -complete=custom,SiRComplete -bang
       \       SearchInPATH	call <SID>SearchInPATH("<bang>",  <f-args>)
 
+" Specialized commands {{{2
 command! -nargs=+ -complete=custom,SiRComplete -bang
       \       Runtime		:runtime<bang> <args>
 command! -nargs=+ -complete=custom,SiRComplete -bang
@@ -149,6 +167,44 @@ command! -nargs=+ -complete=custom,SiRComplete -bang
 
 if !exists('!Echo')
   command! -nargs=+ Echo echo "<args>"
+endif
+
+" Mappings and specialized commands for Vim 7+ {{{2
+if v:version >= 700
+  nnoremap <silent> gf
+	\ :call <sid>OpenWith('e', &path, expand('<cfile>'))<cr>
+  nnoremap <silent> glf
+	\ :echo globpath(&path, expand('<cfile>'))<cr>
+  nnoremap <silent> <c-w>f
+	\ :call <sid>OpenWith('sp', &path, expand('<cfile>'))<cr>
+
+  " Function: s:Option(name, default [, scope])            {{{3
+  " Copy-paste from LHOption()
+  function! s:Option(name,default,...)
+    " Name prefixed by my initial to avoid clashes wth other plugins.
+    let scope = (a:0 == 1) ? a:1 : 'bg'
+    let name = a:name
+    let i = 0
+    while i != strlen(scope)
+      if exists(scope[i].':'.name) && (0 != strlen({scope[i]}:{name}))
+	return {scope[i]}:{name}
+      endif
+      let i = i + 1
+    endwhile 
+    return a:default
+  endfunction
+  "  }}}3
+
+  let s:cmd0 = 'command! -bang -nargs=+ -complete=custom,SiRComplete '
+  let s:cmd1h = s:Option('sir_goto_hsplit', 'GSplit', 'g') 
+  let s:cmd1v = s:Option('sir_goto_vsplit', 'VGSplit', 'g') 
+
+  function! s:cmd2(cmd)
+    return ' call <sid>OpenWith("<bang>","'.a:cmd.'", &path, <f-args>)'
+  endfunction
+
+  exe s:cmd0 . s:cmd1h . s:cmd2('sp')
+  exe s:cmd0 . s:cmd1v . s:cmd2('vsp')
 endif
 
 " }}}1
@@ -301,7 +357,7 @@ function! s:Simplify(pathnames)
   let i = 1
   while i != len(a:pathnames)
     let fcrt = a:pathnames[i]
-    let common = matchstr(common.'££'.fcrt, '^\zs\(.*\)\ze.\{-}££\1.*$')
+    let common = matchstr(common.'££'.fcrt, '^\zs\(.*[/\\]\)\ze.\{-}££\1.*$')
     if strlen(common) == 0
       " No need to further checks
       return a:pathnames
@@ -314,25 +370,57 @@ function! s:Simplify(pathnames)
   return pathnames
 endfunction
 
-" Function: s:SelectOne({path}, {glob-patterns}) {{{3
+" Function: s:IsAbsolutePath({path}) {{{3
+function! s:IsAbsolutePath(path)
+  return a:path =~ '^/'
+	\ . '\|^[a-zA-Z]:%\(/\|\\\)'
+	\ . '\|^[/\\]\{2}'
+  "    Unix absolute path 
+  " or Windows absolute path
+  " or UNC path
+endfunction
+
+" Function: s:IsURL({path}) {{{3
+function! s:IsURL(path)
+  " todo: support UNC paths and other urls
+  return a:path =~ '^\%(https\=\|s\=ftp\|dav\|fetch\|file\|rcp\|rsynch\|scp\)://'
+endfunction
+
+" Function: s:SelectOne({ask_even_if_already_opened}, {path}, {glob-patterns}) {{{3
 " All globbing pattern all matched against the {path}, if several files
 " are found, a confirm dialog box will ask to select one file only.
 " NB: on some systems, we may be interrested in setting:
 "   :set guioptions+=c
-function! s:SelectOne(path, gpatterns)
+function! s:SelectOne(ask_even_if_already_opened, path, gpatterns)
   let matches = []
   let i = 0
   while i != len(a:gpatterns)
+    if s:IsAbsolutePath(a:gpatterns[i])
+	  \ || s:IsURL(a:gpatterns[i])
+      let matches += [ a:gpatterns[i] ]
+    else
     let m = globpath(a:path, a:gpatterns[i])
-    let matches += split(m)
+      let matches += split(m, '\n')
+    endif
     let i = i + 1
   endwhile
   if len(matches) > 1
-    let g:matches = matches
+    if !a:ask_even_if_already_opened
+      " Try to see if a matching buffer is aready opened
+      " If so, jump to it.
+      " @todo: if several match, then ask from the restricted list of matching
+      " buffers....
+      let i = 0
+      while i != len(matches)
+	if s:FindBuffer(matches[i]) != -1 | return '' | endif
+	let i = i + 1
+      endwhile
+      " No matching opened buffer found.
+    endif
     let simpl_matches = deepcopy(matches) 
     let simpl_matches = s:Simplify(simpl_matches)
     let simpl_matches = [ '&Cancel' ] + simpl_matches
-    " use guioptions+=c is case of difficulties with the gui
+    " Consider guioptions+=c is case of difficulties with the gui
     let selection = confirm('Select file to open:', join(simpl_matches,"\n"), 1, 'Question')
     let file = (selection == 1) ? '' : matches[selection-2]
   elseif len(matches) == 0
@@ -353,34 +441,37 @@ function! s:FindBuffer(filename)
   return b
 endfunction
 
-" Function: s:OpenWith({cmd}, {path}, {glob-patterns}) {{{3
+" Function: s:OpenWith({bang}, {cmd}, {path}, {glob-patterns}) {{{3
 " Select only one file that matches {path} +  {glob-patterns}. Then
 " apply the opening command {cmd} on the resulting file.
 " NB: If the result file is already opened in a window, this window
 " becomes the active window. Otherwise, {cmd} is applied. Typical values
 " for {cmd} are "sp", "e", ...
-function! s:OpenWith(cmd, path, ...)
-  let file = s:SelectOne(a:path, a:000)
+function! s:OpenWith(bang, cmd, path, ...)
+  let ask_even_if_already_opened = a:bang == "!"
+  let file = s:SelectOne(ask_even_if_already_opened, a:path, a:000)
   if strlen(file) == 0 | return | endif
   if s:FindBuffer(file) != -1 | return | endif
   exe a:cmd . ' '.file
 endfunction
 
-" Mappings and commands {{{3
-nnoremap <silent> gf :call <sid>OpenWith('e', &path, expand('<cfile>'))<cr>
-nnoremap <silent> glf :echo globpath(&path, expand('<cfile>'))<cr>
-nnoremap <silent> <c-w>f :call <sid>OpenWith('sp', &path, expand('<cfile>'))<cr>
-command! -nargs=+ -complete=custom,SiRComplete
-      \       GSplit		call <sid>OpenWith('sp', &path, <f-args>)
-command! -nargs=+ -complete=custom,SiRComplete
-      \       GVSplit		call <sid>OpenWith('vsp', &path, <f-args>)
-
 endif " version >= 700
 
 " Auto-completion                                {{{2
 " SiRComplete(ArgLead,CmdLine,CursorPos)                   {{{3
+let s:commands = '^SearchIn\S\+\|^V\=[Ss]p\%[lit]\|^Ru\%[ntime]'
+let s:split_commands = '^V\=[Ss]p\%[lit]$'
+if exists('s:cmd1h')
+  " With Vim 7+, there is a support for customizable split commands  
+  let s:cmd1h_pat = substitute(s:cmd1h, '^\(.\)\(.\+\)$', '\1\\%[\2]', '') 
+  let s:cmd1v_pat = substitute(s:cmd1v, '^\(.\)\(.\+\)$', '\1\\%[\2]', '') 
+
+  let s:commands = s:commands . '\|^'.s:cmd1h_pat.'\|^'.s:cmd1v_pat
+  let s:split_commands = s:split_commands . '\|^'.s:cmd1h_pat.'$\|^'.s:cmd1v_pat.'$'
+endif
+
 function! SiRComplete(ArgLead, CmdLine, CursorPos)
-  let cmd = matchstr(a:CmdLine, '^SearchIn\S\+\|^Sp\|^Vsp\|^Ru\%[ntime]')
+  let cmd = matchstr(a:CmdLine, s:commands)
   let cmdpat = '^'.cmd
 
   let tmp = substitute(a:CmdLine, '\s*\S\+', 'Z', 'g')
@@ -401,7 +492,7 @@ function! SiRComplete(ArgLead, CmdLine, CursorPos)
   " let delta = ('SearchInVar'==cmd) ? 1 : 0
   if     'SearchInVar' == cmd
     let delta = 1
-  elseif cmd =~ '^\(Sp\|Vsp\)$'
+  elseif cmd =~ s:split_commands
     return s:FindMatchingFiles(&path, ArgLead)
   elseif cmd =~ '^Ru\%[ntime]$'
     return s:FindMatchingFiles(&runtimepath, ArgLead)

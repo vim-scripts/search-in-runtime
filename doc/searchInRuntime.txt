@@ -1,9 +1,9 @@
 *searchInRuntime.txt*	Plugin for searching within list of directories
-			For Vim version 6.0.	Last change: 12th Dec 2005
+			For Vim version 6.0.	Last change: 13th Jan 2006
 
 
 		     SearchInRuntime MANUAL     by Luc Hermitte
-		     Version 2.1.0
+		     Version 2.1.2
 
 
 ------------------------------------------------------------------------------
@@ -14,13 +14,13 @@ Contents~
   |:SearchInPATH|	Command to search into $PATH
   |:SearchInRuntime|	Command to search into 'runtimepath'
   |:Sp| |:Vsp|		Commands to split open a file found into 'path'
-  |:GSp| |:GVSp|	Commands to goto file found into 'path', or split open
-			a new window
+  |:GSp| |:GVSp|	Commands to go to file found into 'path', or split
+			open a new window
   |glf| |SiR-gf|
   |SiR-CTRL-W_f|	Overrides of |gf| and |CTRL-W_f|
   |:Runtime|		Wrapper for |:runtime| with auto-completion.
 |SiR-examples|		Examples and tips
-|SiR-get|		Where to get this plugin
+|SiR-obtain|		Where to obtain this plugin
 |SiR-completion|	A few words about automatic-completion
 |add-local-help|	Instructions on installing this file
 
@@ -79,11 +79,11 @@ directory.
 Additional parameters~
 When "| {params} .." is passed to :SearchIn*, then for each {file} found,
 :SearchIn* will execute:
-    {cmd} {file} {params} ..
+    :{cmd} {file} {params} ..
 
 When "|0 {params} .." is passed to :SearchIn*, then for each {file} found,
 :SearchIn* will execute:
-    {cmd} {params} .. {file}
+    :{cmd} {params} .. {file}
 
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 						    *:SearchInVar*
@@ -115,7 +115,7 @@ is equivalent to:
 
 I.e.: the list of directories is taken from 'runtimepath'.
 
-And,
+Moreover,
     :SearchInRuntime[!] source {file-patterns} ..
 is equivalent to:
     |:runtime|[!] {file-patterns} ..
@@ -128,32 +128,50 @@ and
 :Vsplit[!] {file-patterns} ...~
 look for files into 'path' and split open them like |:sp| or |:vsp| do.
 
+When [!] is included, all found files are opened.
+When it is not included only the first file found is opened.
+
 They are somehow equivalent to: >
     :SearchInVar &path :sp {file-patterns}
 
 NB:
 - File-completion is provided, unlike |:sp| and |:vsp|. |SiR-completion|
 
+See also |:GSplit| and |:GVSplit|
 
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 						    *:GSplit* *:GVSplit*
-:GSplit {file-patterns} ...~
+:GSplit[!] {file-patterns} ...~
 and
-:GVSplit {file-patterns} ...~
+:GVSplit[!] {file-patterns} ...~
 look for files into 'path'.
+
 If several files match the {file-patterns}, the user will be asked to choose
 one file to open.
-If the selected file is already opened in a window, this window is made the
-active window. If not, a new window is split opened (them like |:sp| or |:vsp|
-do) with the selected file.
+
+If a matching file is already opened in a window, this window is made the
+active window. If several files match, we jump to the first matching window. 
+Using {bang} (!) will override this bahavior. Instead, the user will be asked
+which file must be opened if more than one match the {file-patterns}.
+
+In either cases, if the selected (implictly or explicitly) file is not already
+opened in a window, then a new window is split opened (like |:sp| or |:vsp| do)
+with the selected file.
 
 NB:
 - These commands are related to |:Sp| and |:Vsp|.
 - "G" stands for "Goto-or-".
 - These commands require Vim 7+.
 - File-completion is provided. |SiR-completion|
-- {bang} is not supported like in |:Sp| or |:Vsp|.
+- When several files match, common path denominator are stripped from the
+  choices proposed (e.g. "/some/path/bar/file" and "/some/path/foo/file" are
+  presented as "bar/file" and "foo/file").
 
+It is possible to use other command names if we define *g:sir_goto_hsplit* and
+*g:sir_goto_vsplit* in the |.vimrc|. Their respective default values are
+"GSplit" and "GVSplit". If "Split" or "Vsplit" are used, the default
+bindings for |:Split|, or |:Vsplit|, are overridden by those of defaulted to
+|:GSplit|, or |:GVSplit|.
 
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 						    *SiR-gf* *SiR-CTRL-W_f*
@@ -232,8 +250,8 @@ And now are some of the different ways I use to use this plugin.
 
 
 ------------------------------------------------------------------------------
-						*SiR-get*
-Where to get this plugin~
+						*SiR-obtain*
+Where to obtain this plugin~
 
 This plugin can be dowloaded:
 - on my web site: <http://hermitte.free.fr/vim/general.php>
@@ -255,7 +273,7 @@ feature not disabled. Some of the completions (completion of {cmd} and of
 
 
 ------------------------------------------------------------------------------
- © Luc Hermitte, 2001-2005 <http://hermitte.free.fr/vim/>
- $Id: searchInRuntime.txt 1 2005-12-12 23:20:41Z Luc Hermitte $
+ © Luc Hermitte, 2001-2006 <http://hermitte.free.fr/vim/>
+ $Id: searchInRuntime.txt 15 2006-01-13 00:37:05Z Luc Hermitte $
  VIM: let b:VS_language = 'american' 
  vim:ts=8:sw=4:tw=80:fo=tcq2:isk=!-~,^*,^\|,^\":ft=help:
