@@ -1,16 +1,18 @@
 " ======================================================================
-" $Id: searchInRuntime.vim 14 2006-01-13 00:17:10Z Luc Hermitte $
+" $Id: searchInRuntime.vim 17 2006-01-17 20:38:02Z Luc Hermitte $
 " File:		searchInRuntime.vim 
 " Author:	Luc Hermitte <EMAIL:hermitte {at} free {dot} fr>
 " 		<URL:http://hermitte.free.fr/vim/>
 " Last Update:  $Date$
-" Version:	2.1.2
+" Version:	2.1.3
 "
 " Purpose:	Search a file in the runtime path, $PATH, or any other
 "               variable, and execute an Ex command on it.
 " URL:http://hermitte.free.fr/vim/ressources/vimfiles/plugin/searchInRuntime.vim
 " ======================================================================
 " History: {{{
+"	Version 2.1.3
+"	(*) Bug fix: regression introduced since bang can be used on :G*Split. 
 "	Version 2.1.2
 "	(*) New behavior for :GSplit and :GVSplit:
 "	    If a matching file is already opened in a window, jump to the
@@ -172,11 +174,11 @@ endif
 " Mappings and specialized commands for Vim 7+ {{{2
 if v:version >= 700
   nnoremap <silent> gf
-	\ :call <sid>OpenWith('e', &path, expand('<cfile>'))<cr>
+	\ :call <sid>OpenWith('nobang', 'e', &path, expand('<cfile>'))<cr>
   nnoremap <silent> glf
 	\ :echo globpath(&path, expand('<cfile>'))<cr>
   nnoremap <silent> <c-w>f
-	\ :call <sid>OpenWith('sp', &path, expand('<cfile>'))<cr>
+	\ :call <sid>OpenWith('nobang', 'sp', &path, expand('<cfile>'))<cr>
 
   " Function: s:Option(name, default [, scope])            {{{3
   " Copy-paste from LHOption()
